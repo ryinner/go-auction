@@ -6,3 +6,15 @@ Postrge 16
 ## Fetures
 
 - `go mod tidy` required after import
+
+## Scripts
+
+### Migration:
+
+```
+sudo service postgresql status || sudo service postgresql start
+
+set -a; source .env; set +a
+
+psql "$DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f migrations/000001_init.up.sql
+```
