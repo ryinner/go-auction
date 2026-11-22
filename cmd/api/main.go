@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/ryinner/go-auction/internal/config"
+	"github.com/ryinner/go-auction/internal/handler"
 	"github.com/ryinner/go-auction/internal/store"
 )
 
@@ -32,10 +32,11 @@ func run() error {
 
 	defer s.Close()
 
-	router := chi.NewRouter()
-	router.Get("/api/index", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Hello world"}`))
+	// l := slog.NewLogLogger()
+
+	router := handler.NewRouter(handler.Deps{
+		Store:     s,
+		JWTSecret: cfg.JWTSecret,
 	})
 
 	return http.ListenAndServe(":"+strconv.Itoa(cfg.Port), router)

@@ -6,8 +6,17 @@ Postrge 16
 ## Fetures
 
 - `go mod tidy` required after import
+- `go build ./... && go vet ./...` build + test
 
 ## Scripts
+
+### Run
+
+```
+set -a; source .env; set +a
+
+go run ./cmd/api
+```
 
 ### Migration:
 
