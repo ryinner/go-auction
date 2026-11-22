@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -33,9 +34,8 @@ func Load() (Config, error) {
 
 	if port == "" {
 		err = errors.Join(err, errors.New("PORT is empty"))
-		return Config{}, err
 	} else if errNumeric != nil {
-		err = errors.Join(err, errNumeric)
+		err = errors.Join(err, fmt.Errorf("PORT must be integer: %w", errNumeric))
 	} else if portNumeric < 1 || portNumeric > 65535 {
 		err = errors.Join(err, errors.New("PORT must be between 1 and 65535"))
 	}
