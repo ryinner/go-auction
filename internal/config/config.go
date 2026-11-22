@@ -30,14 +30,17 @@ func Load() (Config, error) {
 		err = errors.Join(err, errors.New("JWT_SECRET is not secure: must be at least 32 bytes"))
 	}
 
-	portNumeric, errNumeric := strconv.Atoi(port)
+	var portNumeric int
 
 	if port == "" {
 		err = errors.Join(err, errors.New("PORT is empty"))
-	} else if errNumeric != nil {
-		err = errors.Join(err, fmt.Errorf("PORT must be integer: %w", errNumeric))
-	} else if portNumeric < 1 || portNumeric > 65535 {
-		err = errors.Join(err, errors.New("PORT must be between 1 and 65535"))
+	} else {
+		portNumeric, errNumeric := strconv.Atoi(port)
+		if errNumeric != nil {
+			err = errors.Join(err, fmt.Errorf("PORT must be integer: %w", errNumeric))
+		} else if portNumeric < 1 || portNumeric > 65535 {
+			err = errors.Join(err, errors.New("PORT must be between 1 and 65535"))
+		}
 	}
 
 	if err != nil {

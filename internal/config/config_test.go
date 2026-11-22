@@ -72,7 +72,7 @@ func TestLoad(t *testing.T) {
 			env: map[string]string{
 				"DB_URL":     "postgres://u:p@localhost:5432/auction",
 				"JWT_SECRET": strings.Repeat("a", 32),
-				"PORT":       "655351",
+				"PORT":       "65536",
 			},
 			wantErr: "PORT must be between 1 and 65535",
 		},
