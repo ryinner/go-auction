@@ -2,42 +2,48 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/ryinner/go-auction/internal/config"
 	"github.com/ryinner/go-auction/internal/handler"
+	"github.com/ryinner/go-auction/internal/logger"
 	"github.com/ryinner/go-auction/internal/store"
 )
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
+	log := logger.New(os.Stdout, slog.LevelInfo)
+	// для сторонних библиотек, которые пишут через slog.Default() или стандартный log
+	slog.SetDefault(log)
+
+	if err := run(log); err != nil {
+		log.Error("app stopped", "err", err)
+		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(log *slog.Logger) error {
 	cfg, err := config.Load()
-
 	if err != nil {
 		return err
 	}
 
 	s, err := store.New(context.Background(), cfg.DBURL)
-
 	if err != nil {
 		return err
 	}
-
 	defer s.Close()
-
-	// l := slog.NewLogLogger()
 
 	router := handler.NewRouter(handler.Deps{
 		Store:     s,
 		JWTSecret: cfg.JWTSecret,
+		Logger:    log,
 	})
 
-	return http.ListenAndServe(":"+strconv.Itoa(cfg.Port), router)
+	addr := ":" + strconv.Itoa(cfg.Port)
+	log.Info("http server starting", "addr", addr)
+
+	return http.ListenAndServe(addr, router)
 }

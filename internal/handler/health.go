@@ -2,10 +2,12 @@ package handler
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
+
+const healthTimeout = 2 * time.Second
 
 type pinger interface {
 	Ping(ctx context.Context) error
@@ -13,23 +15,26 @@ type pinger interface {
 
 type Health struct {
 	pinger pinger
+	log    *slog.Logger
 }
 
-func NewHealth(s pinger) *Health {
-	return &Health{
-		pinger: s,
-	}
+func NewHealth(p pinger, log *slog.Logger) *Health {
+	return &Health{pinger: p, log: log}
 }
 
 func (h *Health) Check(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), healthTimeout)
 	defer cancel()
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := h.pinger.Ping(ctx); err == nil {
-		w.Write([]byte(`{"status": "ok"}`))
-	} else {
-		log.Printf("%s", err.Error())
-		w.WriteHeader(503)
-		w.Write([]byte(`{"status": "unavailable"}`))
+
+	if err := h.pinger.Ping(ctx); err != nil {
+		h.log.ErrorContext(ctx, "db ping failed", "err", err)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"status":"unavailable"}`))
+		return
 	}
+
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }

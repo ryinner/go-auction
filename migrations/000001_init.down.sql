@@ -1,4 +1,4 @@
-DROP TABLE bids;
-DROP TABLE lots;
-DROP TABLE users;
-DROP TYPE "LotsStatuses";
+DROP TABLE IF EXISTS bids;
+DROP TABLE IF EXISTS lots;
+DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS lot_status;
