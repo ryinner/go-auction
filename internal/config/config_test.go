@@ -12,6 +12,7 @@ func TestLoad(t *testing.T) {
 		name    string            // имя подтеста, видно в выводе -v
 		env     map[string]string // ВСЕ три переменные задаём явно
 		wantErr string            // подстрока в ошибке; "" = ошибки быть не должно
+		want    Config            // ожидаемый конфиг, проверяется только при wantErr == ""
 	}{
 		{
 			name: "valid",
@@ -21,6 +22,11 @@ func TestLoad(t *testing.T) {
 				"PORT":       "8080",
 			},
 			wantErr: "",
+			want: Config{
+				DBURL:     "postgres://u:p@localhost:5432/auction",
+				Port:      8080,
+				JWTSecret: strings.Repeat("a", 32),
+			},
 		},
 		{
 			name: "missing DB_URL",
@@ -93,10 +99,11 @@ func TestLoad(t *testing.T) {
 				t.Setenv(k, v)
 			}
 
-			_, err := Load()
+			cfg, err := Load()
 
 			if tt.wantErr == "" {
 				require.NoError(t, err)
+				require.Equal(t, tt.want, cfg)
 				return
 			}
 			require.ErrorContains(t, err, tt.wantErr)

@@ -35,7 +35,8 @@ func Load() (Config, error) {
 	if port == "" {
 		err = errors.Join(err, errors.New("PORT is empty"))
 	} else {
-		portNumeric, errNumeric := strconv.Atoi(port)
+		var errNumeric error
+		portNumeric, errNumeric = strconv.Atoi(port)
 		if errNumeric != nil {
 			err = errors.Join(err, fmt.Errorf("PORT must be integer: %w", errNumeric))
 		} else if portNumeric < 1 || portNumeric > 65535 {
