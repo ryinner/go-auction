@@ -25,6 +25,7 @@ func NewRouter(d Deps) http.Handler {
 
 	router.Get("/healthz", health.Check)
 	router.Post("/auth/register", auth.Register)
+	router.Post("/auth/login", auth.Login)
 
 	return router
 }

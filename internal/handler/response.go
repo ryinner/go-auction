@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const internalErrorMsg = "Internal server error"
+const internalErrorMsg = "internal server error"
 
 type errorResponse struct {
 	Error string `json:"error"`
