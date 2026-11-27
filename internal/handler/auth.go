@@ -21,19 +21,29 @@ type UserStore interface {
 	GetUserByEmail(ctx context.Context, email string) (model.User, error)
 }
 
-type Auth struct {
-	jwtSecret string
-	store     UserStore
-	log       *slog.Logger
+type TokenGenerator interface {
+	Generate(id int, email string) (string, error)
 }
 
-func newAuth(s UserStore, log *slog.Logger, jwtSecret string) *Auth {
-	return &Auth{store: s, log: log, jwtSecret: jwtSecret}
+type Auth struct {
+	responder
+	store  UserStore
+	tokens TokenGenerator
+}
+
+func NewAuth(s UserStore, tokens TokenGenerator, log *slog.Logger) *Auth {
+	return &Auth{responder: responder{log: log}, store: s, tokens: tokens}
 }
 
 type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
 }
 
 func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
@@ -43,10 +53,8 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		a.log.Warn("register invalid json", "err", err)
-		err = jsonResponse(w, map[string]string{
-			"error": "Invalid json",
-		}, http.StatusInternalServerError)
+		a.log.WarnContext(ctx, "register invalid json", "err", err)
+		a.Error(w, r, http.StatusBadRequest, "Invalid json")
 		return
 	}
 
@@ -63,20 +71,14 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		err = jsonResponse(w, map[string]string{
-			"error": err.Error(),
-		}, http.StatusBadRequest)
+		a.Error(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 
 	if err != nil {
-		a.log.ErrorContext(ctx, "password hashing error", "err", err)
-		err = jsonResponse(w, map[string]string{
-			"error": "Interal server error",
-		}, http.StatusInternalServerError)
+		a.Internal(w, r, "password hashing error", err)
 		return
 	}
 
@@ -84,17 +86,22 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if errors.Is(err, store.ErrEmailTaken) {
-			err = jsonResponse(w, map[string]string{
-				"error": "User already exists",
-			}, http.StatusConflict)
+			a.Error(w, r, http.StatusConflict, "User already exists")
 			return
 		}
-		a.log.ErrorContext(ctx, "create user error", "err", err)
-		err = jsonResponse(w, map[string]string{
-			"error": "Internal server error",
-		}, http.StatusInternalServerError)
+		a.Internal(w, r, "create user error", err)
 		return
 	}
 
-	// jwt token service
+	token, err := a.tokens.Generate(user.ID, user.Email)
+	if err != nil {
+		a.Internal(w, r, "generate token error", err)
+		return
+	}
+
+	a.JSON(w, r, http.StatusCreated, TokenResponse{
+		AccessToken: token,
+		TokenType:   "Bearer",
+		ExpiresIn:   int(accessTokenTTL.Seconds()),
+	})
 }

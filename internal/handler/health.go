@@ -13,28 +13,28 @@ type pinger interface {
 	Ping(ctx context.Context) error
 }
 
+type healthResponse struct {
+	Status string `json:"status"`
+}
+
 type Health struct {
+	responder
 	pinger pinger
-	log    *slog.Logger
 }
 
 func NewHealth(p pinger, log *slog.Logger) *Health {
-	return &Health{pinger: p, log: log}
+	return &Health{responder: responder{log: log}, pinger: p}
 }
 
 func (h *Health) Check(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), healthTimeout)
 	defer cancel()
 
-	w.Header().Set("Content-Type", "application/json")
-
 	if err := h.pinger.Ping(ctx); err != nil {
 		h.log.ErrorContext(ctx, "db ping failed", "err", err)
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte(`{"status":"unavailable"}`))
+		h.JSON(w, r, http.StatusServiceUnavailable, healthResponse{Status: "unavailable"})
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"status":"ok"}`))
+	h.JSON(w, r, http.StatusOK, healthResponse{Status: "ok"})
 }

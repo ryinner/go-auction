@@ -21,8 +21,10 @@ func NewRouter(d Deps) http.Handler {
 	router.Use(AccessLog(d.Logger))
 
 	health := NewHealth(d.Store, d.Logger.With("handler", "health"))
+	auth := NewAuth(d.Store, NewTokenIssuer(d.JWTSecret), d.Logger.With("handler", "auth"))
 
 	router.Get("/healthz", health.Check)
+	router.Post("/auth/register", auth.Register)
 
 	return router
 }
